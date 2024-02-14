@@ -1,0 +1,94 @@
+
+//+------------------------------------------------------------------+
+//|                                             Swing Tracer.mq5    |
+//|                         Copyright 2021, Forex Robot Easy Team    |
+//|                                              forexroboteasy.com |
+//+------------------------------------------------------------------+
+#property copyright 'Copyright 2021, Forex Robot Easy Team'
+#property link      'forexroboteasy.com'
+#property version   '1.00'
+#property strict
+
+//--- Input parameters
+input int ATRPeriod = 14;        // ATR period
+input color DefaultColor = Blue; // Default dot color
+input color TrendColor = Red;    // Trend dot color
+input int MaxNotifications = 5;  // Maximum number of notifications
+
+//--- Global variables
+int notificationsCount = 0;      // Counter for notifications
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    //--- Set the indicator buffers
+    SetIndexBuffer(0, buffer1);
+    SetIndexStyle(0, DRAW_ARROW);
+    SetIndexArrow(0, SYMBOL_ARROWUP);
+    SetIndexBuffer(1, buffer2);
+    SetIndexStyle(1, DRAW_ARROW);
+    SetIndexArrow(1, SYMBOL_ARROWDOWN);
+    
+    //--- Set the indicator colors
+    SetIndexLabel(0, 'Swing High');
+    SetIndexLabel(1, 'Swing Low');
+    SetIndexLabel(2, 'ATR Period: ' + ATRPeriod);
+    SetIndexLabel(3, 'Default Color: ' + ColorToString(DefaultColor));
+    SetIndexLabel(4, 'Trend Color: ' + ColorToString(TrendColor));
+    
+    //--- Set the indicator properties
+    IndicatorSetString(INDICATOR_SHORTNAME, 'Swing Tracer');
+    IndicatorSetString(INDICATOR_DESCRIPTION, 'Swing Tracer software');
+    
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime &time[],
+                const double &open[],
+                const double &high[],
+                const double &low[],
+                const double &close[],
+                const long &tick_volume[],
+                const long &volume[],
+                const int &spread[])
+{
+    //--- Calculate the ATR
+    double ATRBuffer[];
+    CopyBuffer(iATR(_Symbol, _Period, ATRPeriod), 0, 0, rates_total, ATRBuffer);
+    
+    //--- Detect swing points
+    for(int i = 1; i < rates_total-1; i++)
+    {
+        //--- Check for swing high
+        if(high[i] > high[i-1] && high[i] > high[i+1] && ATRBuffer[i] > ATRBuffer[i-1])
+        {
+            buffer1[i] = high[i];
+            buffer2[i] = EMPTY_VALUE;
+            notificationsCount++;
+        }
+        
+        //--- Check for swing low
+        if(low[i] < low[i-1] && low[i] < low[i+1] && ATRBuffer[i] > ATRBuffer[i-1])
+        {
+            buffer1[i] = EMPTY_VALUE;
+            buffer2[i] = low[i];
+            notificationsCount++;
+        }
+    }
+    
+    //--- Send notifications if the maximum count has been reached
+    if(notificationsCount >= MaxNotifications)
+    {
+        SendNotification('Maximum number of notifications reached!');
+        notificationsCount = 0;
+    }
+    
+    return(rates_total);
+}
